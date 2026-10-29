@@ -1,0 +1,27 @@
+version: '4.3'
+template: scene_template.yaml
+scene_side_m: 55.0
+c_A: 0.14256914496164447
+overrides:
+  training:
+    hidden_sizes: [256, 256]
+    batch_size: 256
+    gamma: 0.99
+    n_step_return: 7
+    actor_lr: 0.0001
+    critic_lr: 0.0002
+    tau: 0.005
+    policy_delay: 2
+    grad_clip_norm: 1.0
+    use_huber_loss: true
+    random_warmup_env_steps: 10000
+    random_action_hold_steps: 5
+    torch_num_threads: 1
+  replay_buffer:
+    capacity: 120000
+    save_in_checkpoint: true
+components:
+  history_length: 8
+  gru_hidden: 48
+  critic_gru_hidden: 32
+  node_hidden: 24

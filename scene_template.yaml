@@ -1,0 +1,440 @@
+experiment:
+  name: Full
+
+innovations:
+  i1:
+    enabled: true
+    mode: individual_multihead_credit
+  i2:
+    enabled: true
+    lambda_downstream: 0.20
+    downstream_gamma: 0.99
+    lambda_ramp_env_steps: 50000
+    max_downstream_gradient_ratio: 0.30
+    gradient_eps: 1.0e-12
+  i3:
+    enabled: true
+    # The mixed distribution trains only the surface/submarine task critics.
+    # L2's downstream critic and all actor updates use uniform replay.
+    uniform_fraction: 0.50
+    alpha: 0.60
+    beta_start: 0.40
+    beta_anneal_env_steps: 300000
+    role_max_mix: 0.50
+    ema_decay: 0.99
+    priority_eps: 1.0e-6
+    priority_clip: 10.0
+
+task:
+  contract: cooperative_blockade_matd3_v1
+  success_definition: slot_encirclement_then_compaction
+  phases: [CHASE_AND_PRESSURE, HOLD, ENCIRCLE, SUCCESS]
+  active_surface_mask: [1, 1]
+  action_schema:
+    surface: [surge_force, yaw_moment]
+    submarine: [surge_force, yaw_moment]
+  encirclement:
+    initial_radius: 4.5
+    compact_radius: 3.5
+    prediction_horizon_seconds: 0.4
+    slot_arrival_tolerance: 1.0
+    stabilization_seconds: 3.0
+    shrink_rate_mps: 0.05
+    minimum_shrink_steps: 134
+    green_hold_seconds: 3.0
+    shrink_tracking:
+      mean_slot_error_max: 1.0
+      max_slot_error_max: 1.4
+      max_angle_gap_degrees: 172.0
+  surface_pressure:
+    desired_lateral_sign: -1
+    tracking_success:
+      window_steps: 20
+      minimum_valid_fraction: 0.80
+      predicted_clearance_min: 0.5
+      lateral_velocity_min: 0.0
+    active_history_profile: formal
+    history_normalization:
+      b1_contribution: 1.0
+      b2_contribution: 1.0
+      combined_pressure: 2.0
+    intervention_success:
+      recent_window_seconds: 4.5
+      trend_window_seconds: 3.0
+      apf_projection_reference: 2.0
+      b1_apf_projection_min: 0.10
+      b2_apf_projection_min: 0.05
+      net_displacement_min: 3.5
+      path_efficiency_min: 0.45
+      useful_velocity_ratio_min: 0.70
+      minimum_speed: 0.15
+      yaw_saturation_fraction_max: 0.20
+      mean_abs_yaw_rate_max: 0.40
+      mean_normalized_action_change_max: 0.12
+      mean_speed_min: 0.15
+      corridor_dwell_seconds: 2.0
+      active_pressure_integral_min: 0.20
+      b2_incremental_counterfactual_gain_min: 0.8
+      current_counterfactual_cross_track_min: 2.0
+      recent_counterfactual_mean_min: 1.8
+      maximum_counterfactual_cross_track_min: 2.5
+      counterfactual_nondecreasing_fraction_min: 0.60
+      causal_hold_seconds: 1.5
+      clearance_gain_min: 0.8
+      island_avoidance_hold_seconds: 1.0
+      recent_clearance_window_seconds: 1.5
+      recent_actual_clearance_min: 0.0
+      route_corridor_half_width: 1.2
+      trend_majority_fraction: 0.50
+      projected_actual_clearance_min: 0.5
+      projected_shadow_clearance_max: 0.0
+      final_persistence_counterfactual_min: 1.5
+      final_persistence_counterfactual_mean_min: 1.5
+      final_persistence_actual_clearance_min: 0.0
+      lateral_velocity_min: 0.0
+      favorable_heading_degrees_min: 0.0
+    zones:
+      - role: b1
+        along_distance: 2.5
+        lateral_offset: 6.8
+        along_tolerance: 4.2
+        lateral_tolerance: 2.8
+      - role: b2
+        # Forward blocking: center the zone on the Red-to-island escape line.
+        along_distance: 8.0
+        lateral_offset: 0.0
+        along_tolerance: 4.8
+        lateral_tolerance: 3.0
+    history_profiles:
+      disabled: {require_history: false, b1_min: 0.0, b2_min: 0.0, combined_min: 0.0, lateral_deviation_min: 0.0}
+      lenient: {require_history: true, b1_min: 0.2, b2_min: 0.2, combined_min: 0.4, lateral_deviation_min: 0.6}
+      formal: {require_history: true, b1_min: 0.2, b2_min: 0.2, combined_min: 0.4, lateral_deviation_min: 2.5}
+  physical_capture:
+    submarine_distance_range: [2.7, 4.3]
+    core_distance_range: [3.0, 4.0]
+    minimum_core_submarines: 3
+    triangle_margin_min: 0.0
+    max_angular_gap_degrees: 168.0
+    max_slot_error: 0.8
+    mean_relative_speed_max: 0.125
+    # Relaxed thresholds below are retained for Phase 4's diagnostic
+    # stage_success_relaxed only. Phase 3C final success uses the strict
+    # physical thresholds above.
+    training_mean_slot_error_max: 0.8
+    training_max_slot_error_max: 1.0
+    training_minimum_core_submarines: 2
+    training_mean_relative_speed_max: 0.15
+
+env:
+  # Expanded scenario area. Vessel dimensions and task radii remain in metres.
+  world_size: [55.0, 55.0]
+  dt: 0.15
+  max_steps: 900
+  num_surface_blue: 2
+  num_submarines: 3
+
+scenario:
+  name: ideal_cooperative_blockade
+  seed: 0
+  # Advance Red 10 m along the nominal route from the original deployment.
+  red_start: [16.5098, 43.2726]
+  red_heading: -0.9111
+  # B1/B2 start from the 10 m route-shifted deployment with an additional
+  # 5 m upward translation.  Their 0.40 m/s speed ceiling matches Red's.
+  blue_starts:
+    - [30.8638, 49.6845]
+    - [37.0333, 44.5977]
+  # Keep the rollback-(4) geometry and move only the three AUVs another 5 m
+  # downward in world coordinates (y - 5 m).
+  submarine_starts:
+    - [7.2565, 18.0881]
+    - [16.7565, 16.0881]
+    - [24.2565, 18.5881]
+  initial_surface_speed: 0.3
+  initial_submarine_speed: 0.4
+  position_jitter: 0.0
+  heading_jitter_degrees: 0.0
+  boundary_clearance: 2.0
+  task_spawn:
+    nominal_probability: 0.0
+    max_sampling_attempts: 1000
+    surface:
+      # Red-relative sampling already inherits Red's 10 m route translation;
+      # this adds the remaining 5 m upward design translation.
+      random_translation: [0.0, 5.0]
+      b1_s: [8.5, 12.0]
+      b1_l: [8.0, 11.5]
+      b2_s: [15.5, 20.5]
+      b2_l: [8.0, 11.5]
+      heading_jitter_degrees: 0.0
+      minimum_pair_distance: 2.5
+      minimum_red_distance: 6.0
+      boundary_clearance: 2.0
+    submarine:
+      # Red-relative sampling inherits [+7.7533, -6.3155] m from Red.  This
+      # residual makes the net random-scene translation [+3.0, -20.0] m.
+      random_translation: [-4.7533, -13.6845]
+      fixed_reference_center_s: 18.0
+      # Three stratified lower sectors: left, center, right (40 degrees each).
+      lower_half_sector_degrees: 120.0
+      minimum_pair_distance: 3.0
+      minimum_red_distance: 9.0
+      boundary_clearance: 2.0
+      island_safety_buffer: 2.0
+      minimum_any_slot_error: 3.5
+      minimum_intercept_seconds: 10.0
+      maximum_reachability_fraction: 0.60
+      safe_maneuver_probe_distance: 2.0
+      profiles:
+        final:
+          route_progress: [0.0, 0.0]
+          lateral_perturbation: [0.0, 0.0]
+          red_heading_perturbation_degrees: 0.0
+          red_speed_range: [0.40, 0.40]
+          spawn_radius: [12.0, 19.0]
+          submarine_heading_jitter_degrees: 0.0
+
+island:
+  # Preserve the island's relative lower-right placement while holding its
+  # absolute radius at the previous 3.1819813 m physical value.
+  center_ratio: [0.9780092593, 0.2346416526139362]
+  radius_short_side_factor: 0.05785420571531783
+  landing_buffer: 0.4
+
+ship:
+  # Exact 1:10 scale of the previous 8.0 m x 3.1 m collision hull.
+  semi_major: 0.4
+  semi_minor: 0.155
+  surface_length_m: 1.255
+  surface_collision_width_m: 0.29
+  submarine_collision_length_m: 0.60
+  submarine_collision_width_m: 0.31
+  max_speed_blue: 0.40
+  max_speed_submarine: 0.50
+  max_speed_red: 0.40
+  allow_reverse: true
+  blue_reverse_speed_ratio: 0.25
+  submarine_reverse_speed_ratio: 0.25
+  # Surface/red CyberShip II actuator limits.  The submarine has independent
+  # limits under ship.submarine_dynamics below.
+  max_surge_force: 2.2
+  max_yaw_moment: 1.5
+  max_yaw_rate: 0.675
+  max_sway_speed: 0.60
+  red_speed: 0.40
+  dynamics:
+    model: cyber_ship_ii_3dof_underactuated
+    internal_substeps: 5
+    reference_max_acceleration: 0.08
+    reference_max_yaw_acceleration: 0.50
+    reference_sway_damping: 1.0
+    parameters:
+      mass: 23.8
+      yaw_inertia: 1.76
+      center_of_gravity_x: 0.046
+      x_u_dot: -2.0
+      y_v_dot: -10.0
+      y_r_dot: 0.0
+      n_v_dot: 0.0
+      n_r_dot: -1.0
+      x_u: -0.7225
+      x_abs_u_u: -1.3274
+      x_uuu: -5.8664
+      y_v: -0.8612
+      y_abs_v_v: -36.2823
+      y_r: 0.1079
+      y_abs_r_v: -0.805
+      y_abs_v_r: -0.845
+      y_abs_r_r: -3.45
+      n_v: 0.1052
+      n_abs_v_v: 5.0437
+      n_abs_r_v: 0.13
+      n_r: -1.9
+      n_abs_v_r: 0.08
+      n_abs_r_r: -0.75
+  submarine_dynamics:
+    # Horizontal 0.60 m / 15 kg AUV. Model form and drag coefficients follow
+    # low-speed AUV literature; geometry-scaled inertia/quadratic drag are not
+    # tank-identified values. Linear damping is this project's calibration.
+    model: fixed_auv_horizontal_3dof_underactuated
+    nominal_rigid_body_mass_kg: 15.0
+    water_density_kg_m3: 1000.0
+    nominal_length_m: 0.60
+    nominal_displacement_diameter_m: 0.21851
+    # Match full-thrust equilibrium to 0.50 m/s so nominal maximum speed is
+    # set by thrust/drag dynamics rather than the protective speed clamp:
+    # 2.60 * 0.50 + 6.94 * 0.50^2 = 3.035 N.
+    max_surge_force: 3.035
+    max_yaw_moment: 1.5
+    internal_substeps: 5
+    reference_max_acceleration: 0.08
+    reference_max_yaw_acceleration: 0.50
+    reference_sway_damping: 1.0
+    parameters:
+      # Effective inertia M = M_RB + M_A, not rigid-body mass entries.
+      m11: 16.5
+      m22: 37.5
+      m33: 0.981
+      d11: 2.60
+      d22: 25.0
+      d33: 2.10
+      d11_quad: 6.94
+      d22_quad: 78.66
+      d33_quad: 0.2434
+
+wave:
+  model: regular_linear
+  height_range_m: [0.00, 0.04]
+  wavelength_range_m: [0.94125, 2.51]
+  direction_range_degrees: [0.0, 360.0]
+  initial_phase_range_rad: [0.0, 6.283185307179586]
+  submarine_direct_wave_coupling: 0.0
+
+communication:
+  enabled: true
+  loss_model: gilbert_elliott
+  available_loss_models: [independent_bernoulli, gilbert_elliott]
+  target_loss_range: [0.00, 0.10]
+  bad_to_good: 0.5
+  mean_bad_burst_packets: 2.0
+  delay_steps: [0, 3]
+  age_cap_steps: 10
+  initial_sync: true
+
+red_policy:
+  attraction_gain: 1.0
+  repulsion_gain: 1.0
+  repulsion_range: 20.0
+  heading_gain: 1.8
+  yaw_rate_factor: 0.20
+  target_speed: 0.40
+  accel_gain: 2.0
+
+reward:
+  formulation: surface_engagement_reverse_v6
+  implementation_revision: 3
+  # Explicit surface weights; weights below this block apply to submarines.
+  surface:
+    weights:
+      outcome: 0.6
+      engagement: 0.3
+      progress: 1.0
+      spacing: 1.0
+      yaw_rate: 0.25
+      time: 1.0
+      safety: 1.0
+      reverse: 0.4
+    engagement_inner_m: 4.0
+    engagement_outer_m: 10.0
+    engagement_cutoff_m: 30.0
+    reverse_deadband_mps: 0.02
+    reverse_scale_mps: 0.10
+    escape_relief: true
+  weights:
+    position: 0.6
+    progress: 1.0
+    heading: 0.5
+    speed: 0.5
+    alignment: 0.0
+    cooperation: 0.6
+    spacing: 1.0
+    yaw_rate: 1.0
+    time: 1.0
+    safety: 1.0
+  normalization:
+    position_softening_m: 2.0
+    k_pos: 0.08
+    correction_speed_ratio: 0.8
+    velocity_penalty_scale: 0.3
+    cooperation_penalty_scale: 0.25
+    spacing_safe_m: 4.0
+    spacing_scale_m: 2.5
+    spacing_max_penalty: 2.0
+    yaw_rate_penalty_scale: 0.15
+    time_penalty_per_second: 0.01
+    pressure_projection_reference: 0.10
+    safety_boundary_margin_m: 2.5
+    safety_island_margin_m: 2.5
+    safety_red_margin_m: 2.5
+    safety_penalty_scale: 1.0
+  terminal:
+    # Every active agent receives the same terminal value. A timeout remains
+    # a truncation, but it is a reset boundary and therefore does not bootstrap.
+    success: 5.0
+    landing: -60.0
+    collision: -60.0
+    out_of_bounds: -60.0
+    timeout: -10.0
+    formation_lost: -20.0
+
+final_task:
+  active_roles: [surface, submarine]
+  max_steps: 900
+  max_episodes: 1000000
+  max_environment_steps: 1000000
+  environment: {red_speed: 0.40, submarine_dynamics: true, static_slots: false, submarine_start_interpolation: 0.0, compaction_enabled: true, position_jitter: 0.0, heading_jitter_degrees: 0.0}
+  success: {require_surface_intervention: true, require_compaction: true, require_triangle: true, max_slot_error: 1.2, mean_slot_error: 0.9, mean_velocity_error: 0.10, max_angle_gap_degrees: 168.0, hold_seconds: 0.0}
+  timing: {final_hold_steps: 0, formation45_hold_steps: 14, minimum_shrink_steps: 134}
+  evaluation: {recent_training_window: 100, recent_training_success_rate: 0.90, frozen_random_episodes: 30, fresh_random_episodes: 30, frozen_successes_required: 27, fresh_successes_required: 24, consecutive: 3, interval_episodes: 100}
+
+training:
+  batch_size: 256
+  gamma: 0.9923
+  # 7 simulator steps = 1.05 s; gamma^7 = 0.9473, close to the senior
+  # implementation's one-second gamma=0.95 Bellman horizon.
+  n_step_return: 7
+  tau: 0.005
+  actor_lr: 0.0001
+  critic_lr: 0.0002
+  hidden_sizes: [256, 256]
+  activation: relu
+  grad_clip_norm: 1.0
+  use_huber_loss: true
+  actor_output_gain: 0.01
+  critic_output_gain: 0.01
+  critic_output_bias: -0.01
+  random_warmup_env_steps: 10000
+  random_action_hold_steps: 5
+  target_policy_noise: 0.2
+  target_noise_clip: 0.5
+  policy_delay: 2
+  exploration_noise_start: 0.20
+  exploration_noise_end: 0.05
+  exploration_decay_steps: 300000
+  save_interval_episodes: 10
+  eval_seed_offset: 1000000
+  # Keep each training process to one PyTorch CPU worker thread.
+  torch_num_threads: 1
+  matmul_precision: high
+  deterministic_algorithms: true
+  device: auto
+
+replay_buffer:
+  capacity: 120000
+  save_in_checkpoint: false
+
+schema:
+  observation_version: 14
+  replay_version: 9
+
+checkpoint:
+  schema_version: 19
+  run_id: default_run
+
+runtime:
+  headless: true
+
+logging:
+  console_every_episodes: 10
+
+outputs:
+  root: outputs
+
+visual:
+  window_size: [1200, 800]
+  fps: 45
+  meters_per_pixel: auto
+  show_sensor_lines: false
+  show_target_slots: true
+  trail_length: 900
+  show_shadow_red: true
