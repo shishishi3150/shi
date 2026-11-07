@@ -1,0 +1,10 @@
+# Smaller I3 search budget; training updates, batch and safety settings unchanged.
+# Validate historical-candidate coverage before using for final results.
+template: scene_template.yaml
+components:
+  history_length: 1
+overrides:
+  purpose: compute_reduced_training
+  i3:
+    search_pool: 128
+    candidates: 2

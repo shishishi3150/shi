@@ -1,0 +1,417 @@
+task:
+  contract: heterogeneous_reef_interception
+  objective: auv_encirclement
+  success_hold_seconds: 3.0
+  # Total episode step, not an additional duration after the first capture.
+  post_capture_end_step: 650
+  capture_min_radius_m: 2.0
+  capture_max_radius_m: 5.0
+  capture_min_hull_margin_m: 0.25
+  engagement_x_range:
+  - 18.0
+  - 44.0
+  attribution_window_seconds: 4.0
+  minimum_shadow_gap_m: 0.5
+  minimum_progress_deficit_m: 0.15
+  minimum_usv_engagement_m: 4.0
+  minimum_auv_observers: 3
+  maximum_observer_angle_gap_degrees: 160.0
+  maximum_tracking_error_m: 3.0
+  maximum_information_age_seconds: 3.0
+  maximum_position_variance_m2: 12.0
+  minimum_informed_usvs: 2
+  minimum_shadow_progress_m: 0.2
+  minimum_propulsion_fraction: 0.5
+env:
+  world_size:
+  - 55.0
+  - 55.0
+  dt: 0.15
+  max_steps: 900
+  num_surface_blue: 2
+  num_submarines: 3
+scenario:
+  red_start:
+  - 11.0
+  - 30.0
+  red_heading: 0.0
+  blue_starts:
+  # Both hulls start southeast of reef C, outside the reef cluster.
+  - - 38.0
+    - 22.0
+  - - 41.5
+    - 22.0
+  submarine_starts:
+  - - 12.0
+    - 36.0
+  # Y2 stages in the open water below reefs B and C.
+  - - 29.0
+    - 13.0
+  # Y3 starts at rest just northeast of reef C.
+  - - 40.0
+    - 36.0
+  initial_surface_speed: 0.0
+  initial_submarine_speed: 0.0
+  position_jitter: 0.0
+  heading_jitter_degrees: 0.0
+  name: heterogeneous_reef_interception
+  blue_headings:
+  - 3.141592653589793
+  - 3.141592653589793
+  submarine_headings:
+  - -1.5707963267948966
+  - 1.5707963267948966
+  - 3.141592653589793
+reefs:
+- name: A
+  center:
+  - 19.6
+  - 38.0
+  radius: 3.5
+- name: B
+  center:
+  - 19.6
+  - 16.0
+  radius: 3.5
+- name: C
+  center:
+  - 32.8
+  - 28.1
+  radius: 3.5
+protected_zone:
+  center:
+  - 49.0
+  - 27.0
+  radius: 4.0
+ship:
+  semi_major: 0.4
+  semi_minor: 0.155
+  surface_length_m: 1.255
+  surface_collision_width_m: 0.29
+  submarine_collision_length_m: 0.6
+  submarine_collision_width_m: 0.31
+  max_speed_blue: 0.4
+  max_speed_submarine: 0.5
+  max_speed_red: 0.4
+  # Every integration substep clamps body-frame surge speed to [0, max_speed].
+  # Negative surge force remains available for braking, never reverse motion.
+  allow_reverse: false
+  blue_reverse_speed_ratio: 0.25
+  submarine_reverse_speed_ratio: 0.25
+  max_surge_force: 2.2
+  max_yaw_moment: 1.5
+  max_yaw_rate: 0.675
+  max_sway_speed: 0.6
+  red_speed: 0.4
+  dynamics:
+    model: cyber_ship_ii_3dof_underactuated
+    internal_substeps: 5
+    reference_max_acceleration: 0.08
+    reference_max_yaw_acceleration: 0.5
+    reference_sway_damping: 1.0
+    parameters:
+      mass: 23.8
+      yaw_inertia: 1.76
+      center_of_gravity_x: 0.046
+      x_u_dot: -2.0
+      y_v_dot: -10.0
+      y_r_dot: 0.0
+      n_v_dot: 0.0
+      n_r_dot: -1.0
+      x_u: -0.7225
+      x_abs_u_u: -1.3274
+      x_uuu: -5.8664
+      y_v: -0.8612
+      y_abs_v_v: -36.2823
+      y_r: 0.1079
+      y_abs_r_v: -0.805
+      y_abs_v_r: -0.845
+      y_abs_r_r: -3.45
+      n_v: 0.1052
+      n_abs_v_v: 5.0437
+      n_abs_r_v: 0.13
+      n_r: -1.9
+      n_abs_v_r: 0.08
+      n_abs_r_r: -0.75
+  submarine_dynamics:
+    model: fixed_auv_horizontal_3dof_underactuated
+    nominal_rigid_body_mass_kg: 15.0
+    water_density_kg_m3: 1000.0
+    nominal_length_m: 0.6
+    nominal_displacement_diameter_m: 0.21851
+    max_surge_force: 3.035
+    max_yaw_moment: 1.5
+    internal_substeps: 5
+    reference_max_acceleration: 0.08
+    reference_max_yaw_acceleration: 0.5
+    reference_sway_damping: 1.0
+    parameters:
+      m11: 16.5
+      m22: 37.5
+      m33: 0.981
+      d11: 2.6
+      d22: 25.0
+      d33: 2.1
+      d11_quad: 6.94
+      d22_quad: 78.66
+      d33_quad: 0.2434
+wave:
+  model: regular_linear
+  height_range_m:
+  - 0.0
+  - 0.04
+  wavelength_range_m:
+  - 0.94125
+  - 2.51
+  direction_range_degrees:
+  - 0.0
+  - 360.0
+  initial_phase_range_rad:
+  - 0.0
+  - 6.283185307179586
+  submarine_direct_wave_coupling: 0.0
+communication:
+  enabled: true
+  loss_model: independent_bernoulli
+  target_loss_range:
+  - 0.1
+  - 0.1
+  loss_rate: 0.1
+  bad_to_good: 0.5
+  delay_steps:
+  - 3
+  - 3
+  age_cap_steps: 80
+  max_age_seconds: 12.0
+  process_acceleration_noise: 0.35
+  initial_sync: false
+  peer_mode: normal
+  peer_extra_delay_steps: 10
+sensors:
+  max_range_m: 6.0
+  range_sigma_m: 0.2
+  bearing_sigma_rad: 0.05235987755982989
+  minimum_detection_probability: 0.1
+  false_alarm_rate: 0.0
+  acoustic_occlusion: false
+depth:
+  auv_depth_m: 3.0
+  surface_keel_depth_m: 0.5
+  auv_vertical_radius_m: 0.16
+  vertical_safety_margin_m: 0.5
+  reef_shallow_buffer_m: 0.4
+  horizontal_safety_margin_m: 0.3
+red_policy:
+  clearance_m: 1.25
+  attraction_gain: 1.0
+  reef_avoidance_range_m: 6.0
+  reef_avoidance_gain: 2.0
+  # Stretch reef equipotentials along the east-west approach for early turns.
+  reef_field_x_scale: 1.8
+  surface_avoidance_range_m: 5.0
+  surface_avoidance_gain: 1.5
+  # Break a frontal APF balance with a locally chosen, latched bypass side.
+  bypass_gain: 0.7
+  # Only used in the separate, post-capture withdrawal replay.
+  withdrawal_yaw_rate_factor: 0.4
+  boundary_avoidance_range_m: 2.5
+  boundary_avoidance_gain: 1.0
+  repulsion_limit: 4.0
+  field_speed_gain: 1.5
+  heading_gain: 1.8
+  yaw_rate_factor: 0.25
+  target_speed: 0.4
+  accel_gain: 2.0
+  stagnation_window_steps: 40
+  stagnation_progress_m: 0.25
+reward:
+  scheme: cooperative_positive_v2
+  phase_contract: positive_motion_capture_support_v2
+  positive:
+    # Per-agent process <= .02; first capture +2; safe completion +2.
+    # Completion bonus is user-selected; no raw success/failure ordering guarantee.
+    # No living bonus or time cost. Failure stops future positive earnings.
+    step_budget: 0.02
+    episode_budget: 40.0
+    capture_bonus: 2.0
+    distance_scale_m: 8.0
+    usv_distance_scale_m: 8.0
+    usv_minimum_distance_m: 2.0
+    full_clearance_m: 1.0
+    # Escort velocity/heading ideas adapted to a free capture annulus.
+    closing_speed_mps: 0.20
+    closing_scale_m: 4.0
+    velocity_error_scale_mps: 0.25
+    heading_speed_floor_mps: 0.05
+    motion_clearance_m: 0.50
+    interception_lateral_scale_m: 4.0
+    action_moderation_fraction: 0.05
+    yaw_moderation_fraction: 0.05
+    auv_weights:
+      auv_individual_reward: 0.20
+      auv_distance_reward: 0.15
+      auv_gap_reward: 0.15
+      auv_hull_reward: 0.15
+      auv_tracking_reward: 0.10
+      auv_hold_reward: 0.10
+      auv_velocity_reward: 0.10
+      auv_heading_reward: 0.05
+    usv_weights:
+      usv_approach_reward: 0.25
+      usv_blocking_reward: 0.25
+      usv_support_reward: 0.20
+      usv_contribution_reward: 0.15
+      usv_interception_position_reward: 0.15
+  cost:
+    # Historical cost-only policies/configs retain their original equations.
+    # 900*.1 + 10 = 100; .1/(1-.99) = 10 prevents early-failure escape.
+    step_budget: 0.1
+    episode_budget: 100.0
+    distance_scale_m: 8.0
+    usv_distance_scale_m: 8.0
+    auv_weights:
+      auv_distance_cost: 0.35
+      auv_individual_cost: 0.15
+      auv_gap_cost: 0.15
+      auv_hull_cost: 0.10
+      auv_tracking_cost: 0.10
+      auv_hold_cost: 0.05
+      time_cost: 0.04
+      safety_penalty: 0.04
+      action_penalty: 0.01
+      yaw_rate: 0.01
+    usv_weights:
+      usv_approach_cost: 0.30
+      usv_blocking_cost: 0.25
+      usv_support_cost: 0.25
+      usv_shapley_cost: 0.10
+      time_cost: 0.04
+      safety_penalty: 0.04
+      action_penalty: 0.01
+      yaw_rate: 0.01
+  potential:
+    distance_scale_m: 1.5
+    hull_guidance_m: 2.0
+    hull_power: 2.0
+    tracking_error_scale_m: 3.0
+    tracking_variance_scale_m2: 12.0
+    tracking_fresh_seconds: 1.0
+    distance_mean_fraction: 0.50
+    tracking_mean_fraction: 0.50
+    distance_weight: 0.25
+    gap_weight: 0.30
+    hull_weight: 0.25
+    # Historical PBRS weights and diagnostic potential only. Cost v2 pays
+    # the normalized cost.*_weights above, without terminal potential resets.
+    tracking_weight: 0.18
+    hold_weight: 0.22
+  usv:
+    potential_weight: 7.5
+    gap_scale_m: 5.0
+    readiness_floor: 0.25
+    readiness_distance_weight: 0.50
+    readiness_gap_weight: 0.25
+    readiness_hull_weight: 0.25
+    shapley_weight: 0.15
+    shapley_scale_m: 0.10
+    safety: 1.50
+    action: 0.05
+    yaw_rate: 0.10
+    yaw_soft_threshold_rps: 0.30
+  auv:
+    potential_weight: 10.0
+    individual_weight: 0.625
+    discovery: 0.75
+    safety: 1.25
+    action: 0.05
+    yaw_rate: 0.10
+    yaw_soft_threshold_rps: 0.30
+  terminal:
+    success: 2.0
+    breakthrough: 0.0
+    collision: 0.0
+    reef_collision: 0.0
+    out_of_bounds: 0.0
+    timeout: 0.0
+    scenario_anomaly: 0.0
+    numerical_error: 0.0
+  search_coverage_diagnostics: false
+  # Kept only for explicit legacy coverage diagnostics, never paid.
+  search_grid_m: 2.0
+training:
+  batch_size: 256
+  gamma: 0.99
+  n_step_return: 7
+  tau: 0.005
+  actor_lr: 0.0001
+  critic_lr: 0.0002
+  hidden_sizes:
+  - 256
+  - 256
+  activation: relu
+  grad_clip_norm: 1.0
+  use_huber_loss: true
+  actor_output_gain: 0.01
+  critic_output_gain: 0.01
+  critic_output_bias: -0.01
+  random_warmup_env_steps: 10000
+  random_action_hold_steps: 5
+  target_policy_noise: 0.2
+  target_noise_clip: 0.5
+  policy_delay: 2
+  exploration_noise_start: 0.2
+  exploration_noise_end: 0.05
+  exploration_decay_steps: 300000
+  save_interval_episodes: 10
+  eval_seed_offset: 1000000
+  torch_num_threads: 1
+  matmul_precision: high
+  deterministic_algorithms: true
+  device: auto
+replay_buffer:
+  capacity: 20000
+  save_in_checkpoint: false
+outputs:
+  root: outputs
+visual:
+  window_size:
+  - 1200
+  - 800
+  fps: 45
+  meters_per_pixel: auto
+  show_sensor_lines: false
+  trail_length: 900
+  show_shadow_red: true
+purpose: formal_training
+counterfactual:
+  enabled: true
+  cadence_steps: 10
+  horizon_steps: 20
+  minimum_effect_m: 0.01
+  max_age_steps: 20
+information:
+  mode: hold
+i1:
+  # Candidate lookahead: 3 s, then a feedback-braking feasibility tail.
+  horizon_steps: 20
+  # Upper bound, not a fixed extra rollout: stop at near-rest. The full
+  # sampled surge/sway/yaw limit grid needs up to 29.25 s for the USV.
+  backup_steps: 200
+  stop_speed_mps: 0.02
+  stop_yaw_rate_rps: 0.02
+  margin_m: 0.15
+  uncertainty_margin_m: 0.1
+  candidate_levels: 3
+i3:
+  variant: conservative
+  candidates: 8
+  search_pool: 512
+  max_distance: 2.0
+  minimum_quality: 0.2
+  enhancement_weight: 0.5
+  advantage_clip: 1.0
+  uncertainty_scale: 1.0
+  similarity_temperature: 1.0
+  # Observed 7-step positive returns are about 0.03--0.05, not order one.
+  # Keep the 0.2 quality gate while calibrating its outcome-confidence units.
+  return_scale: 0.05
