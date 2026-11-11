@@ -1,0 +1,11 @@
+template: scene_template.yaml
+components:
+  history_length: 1
+overrides:
+  purpose: learning_pilot
+  training:
+    batch_size: 32
+    random_warmup_env_steps: 64
+  replay_buffer:
+    capacity: 2000
+    save_in_checkpoint: false

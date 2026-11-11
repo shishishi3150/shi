@@ -1,0 +1,10 @@
+# Reduced I3 search budget; training updates, batch and safety settings unchanged.
+# This is a different innovation search budget, not an equivalent implementation.
+template: scene_template.yaml
+components:
+  history_length: 1
+overrides:
+  purpose: compute_reduced_training
+  i3:
+    search_pool: 256
+    candidates: 4

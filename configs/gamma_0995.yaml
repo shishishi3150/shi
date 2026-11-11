@@ -1,0 +1,23 @@
+components:
+  history_length: 1
+overrides:
+  reward:
+    scheme: cooperative_pbrs_v1
+    terminal:
+      success: 3.0
+      breakthrough: -3.0
+      collision: -5.0
+      reef_collision: -5.0
+      out_of_bounds: -5.0
+      timeout: -1.5
+      scenario_anomaly: -10.0
+      numerical_error: -10.0
+  purpose: gamma_preexperiment
+  replay_buffer:
+    capacity: 2000
+    save_in_checkpoint: false
+  training:
+    batch_size: 32
+    random_warmup_env_steps: 64
+    gamma: 0.995
+template: scene_template.yaml
